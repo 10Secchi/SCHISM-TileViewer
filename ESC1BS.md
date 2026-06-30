@@ -9,24 +9,24 @@
   <img src="https://www.hereon.de/cms60/res/assets/logos/hereon_logo.svg" alt="Hereon" width="220">
 </div>
 
-# FOCCUS Demonstrator: Management and protection of the coastal area - German Bight  
+# FOCCUS Demonstrator: Management and protection of the coastal area - Western Black Sea
 
 
 
 ## WHY? - Objective and Background 
 
-The objective of this demonstrator is to showcase the results of Application 2.1.2.2 ([D8.1](https://docs.google.com/document/d/1AXOMLxra9OLt3CGxj5IWgSxqhNLrOAe-/edit)), which addresses the Environmental and Societal Challenge (ESC) from Topic Group 1: **Coastal Erosion Dynamics** for the German Bight pilot area.
+The objective of this demonstrator is to showcase the results of Application 2.1.2.3 ([D8.1](https://docs.google.com/document/d/1AXOMLxra9OLt3CGxj5IWgSxqhNLrOAe-/edit)), which addresses the Environmental and Societal Challenge (ESC) from Topic Group 1: **Coastal Erosion Dynamics** for the Northwestern Black Sea pilot area.
 
-Coastal flooding and erosion are becoming increasingly severe due to extreme storms and rising sea levels. Addressing these challenges requires reliable forecasting tools that accurately represent the hydrodynamic, wave, and sediment-morphodynamic processes driving coastal change. Within ESC1, the [GCOAST-GB](https://www.hereon.de/institutes/coastal_systems_analysis_modeling/research/gcoast/applications/index.php.en) forecasting system has been enhanced and extended across the land–ocean continuum. In addition, this downstream  application (select the dashboard from the sidebar to start the application):
+Coastal hazards are becoming increasingly severe due to combined effects storms and reduction in sediment apport. Addressing the driving mechanisms behing these hazards requires processe-based models to resolve hydrodynamic, wave, and morphodynamic processes. In FOCCUS ESC1, the [GCOAST-BS](https://www.hereon.de/institutes/coastal_systems_analysis_modeling/research/gcoast/applications/index.php.en) forecasting system has been enhanced and extended across coastal Northwestern Black Sea. This downstream  application (select the dashboard from the sidebar to start the application):
 <img src="ToggleB.png" width="30%">
 
-has been developed to support coastal risk assessment and adaptation planning.
+has been developed to support coastal hazard assessment and provides insight for adaptation plans.
 
 The application aims to:
 
-- assess coastal erosion and hazard risks using dedicated indicators;
-- provide actionable metrics to support risk assessment, early warning, and decision-making;
-- demonstrate scenario-based *what-if* analyses of Nature-based Solutions (NbS), represented by coastal vegetation buffers, to evaluate their potential to increase coastal resilience by comparing forecasts with observed vegetation against a vegetation-free reference scenario.
+- assess coastal hazards risks using dedicated indicators from the process-based model GCOAST-BS;
+- provide actionable metrics for policy and decision-makers;
+- demonstrate capabilities to provide assessment with seamless-scale interactivity.
 
 
 
@@ -49,9 +49,7 @@ The following indicators metrics summarise extreme and erosion-relevant conditio
 | Sea-surface height q95 | SSH q95 | 95th percentile of sea-surface height | m |
 | Significant wave height q95 | Hs q95 | 95th percentile of significant wave height | m |
 | Bottom stress q95 | τ q95 | 95th percentile of bed shear stress | Pa |
-| Near-bottom suspended sediment concentration q95 | SSC q95 | 95th percentile of near-bottom suspended sediment concentration | — |
 | Erosion risk ratio | R1 (ERI) | Relative duration of critical shear-stress exceedance (wet timesteps only) | — |
-| Vegetation cover | nveg | Model seagrass / vegetation cover fraction | — |
 
 ### Erosion Risk Index (ERI)
 
