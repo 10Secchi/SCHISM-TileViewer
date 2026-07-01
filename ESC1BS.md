@@ -75,13 +75,11 @@ Users can:
 
 Simulations are performed on an unstructured grid with coastward-increasing resolution (3 km to 100 m), enabling the representation of large-scale coastal processes while resolving nearshore dynamics with coupled modules (SCHISM-SED3D-WWM). To assess beach-scale erosion and morphodynamic response, a high-resolution XBeach sub-nest (10–50 m) is implemented for regions of interest. Both models allow the evaluation of scenarios and the influence of hydrodynamics, wave attenuation over the seabed, and consequently sediment transport, which are the driving mechanisms of coastal erosion.
 
-<img src="NestingSystem.png" width="101%">
+<img src="demo.png" width="90%">
 
 The application workflow's modelling system integration within (among other inputs and developments) Copernicus Marine Services and FOCCUS developments, with links to the respective deliverables and milestones, are given in the flowchart for ESC 1.2.3 through the PDF content (better visualization with the Firefox web browser):
 
-```python
-streamlit_insert_pdf = "DF123.pdf"
-```
+streamlit_insert_pdf="DF123.pdf"
 
 The GCOAST-BS system has undergone FOCCUS-specific improvements related to different WP activities, such as:
 
