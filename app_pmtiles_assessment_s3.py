@@ -207,7 +207,7 @@ if not FOCCUS_LOGO.is_file():
 # GITHUB_README_URL = ""
 DEMO_TAGLINE = (
     "Interactive GCOAST-GB erosion indicators and polygon-based area assessment "
-    "for the German Bight."
+    "for the Western Black Sea."
 )
 
 
@@ -237,7 +237,7 @@ def run_dashboard(*, configure_page: bool = True) -> None:
             st.image(str(FOCCUS_LOGO), width=120)
     with hdr_text:
         st.markdown(
-            "**FOCCUS Demonstrator — Management and protection of the coastal area, German Bight**"
+            "**FOCCUS Demonstrator — Management and protection of the coastal area, Western Black Sea**"
         )
         st.caption(DEMO_TAGLINE)
     # with hdr_link:
