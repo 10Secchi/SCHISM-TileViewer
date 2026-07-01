@@ -25,7 +25,7 @@ from pmtiles.reader import Reader
 
 ENDPOINT_URL = "https://minio.dive.edito.eu"
 S3_BUCKET = "oidc-jacobb"
-S3_PREFIX = "Hereon/IndicatorAssesment"
+S3_PREFIX = "Hereon/IndicatorAssesment_douglas"
 DEFAULT_RUN_DATE = dt.date(2026, 6, 4)
 DEFAULT_DOMAIN_BOUNDS = (53.04, 5.12, 55.63, 10.40)
 MIN_BOUNDS_SPAN_DEG = 0.5
