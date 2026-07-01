@@ -14,7 +14,7 @@ import streamlit as st
 from foccus_about_page import render_about_page
 
 st.set_page_config(
-    page_title="FOCCUS German Bight demonstrator",
+    page_title="FOCCUS Northwestern Black Sea demonstrator",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
