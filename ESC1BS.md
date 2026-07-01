@@ -7,9 +7,9 @@
 
 ## WHY? - Objective and Background
 
-The objective of this demonstrator is to showcase the results of Application 2.1.2.3 ([D8.1](https://docs.google.com/document/d/1AXOMLxra9OLt3CGxj5IWgSxqhNLrOAe-/edit)), which addresses the Environmental and Societal Challenge (ESC) from Topic Group 1: **Coastal Erosion Dynamics** for the Northwestern Black Sea pilot area.
+The objective of this demonstrator is to showcase the results of Application 2.1.2.3 ([D8.1](https://docs.google.com/document/d/1AXOMLxra9OLt3CGxj5IWgSxqhNLrOAe-/edit)), which addresses the Environmental and Societal Challenge (ESC) from Topic Group 1: **Coastal Erosion Dynamics** for the Western Black Sea pilot area.
 
-Coastal hazards are becoming increasingly severe due to the combined effects of storms and the reduction in sediment supply. Addressing the driving mechanisms behind these hazards requires process-based models to resolve hydrodynamic, wave, and morphodynamic processes. In FOCCUS ESC1, the [GCOAST-BS](https://www.hereon.de/institutes/coastal_systems_analysis_modeling/research/gcoast/applications/index.php.en) forecasting system has been enhanced and extended across coastal modelling capabilities in the Northwestern Black Sea. This downstream application can be launched as a dashboard from the sidebar menu and has been developed to support coastal assessment and provide insights for adaptation plans against coastal hazards.
+Coastal hazards are becoming increasingly severe due to the combined effects of storms and the reduction in sediment supply. Addressing the driving mechanisms behind these hazards requires process-based models to resolve hydrodynamic, wave, and morphodynamic processes. In FOCCUS ESC1, the [GCOAST-BS](https://www.hereon.de/institutes/coastal_systems_analysis_modeling/research/gcoast/applications/index.php.en) forecasting system has been enhanced and extended across coastal modelling capabilities in the Western Black Sea. This downstream application can be launched as a dashboard from the sidebar menu and has been developed to support coastal assessment and provide insights for adaptation plans against coastal hazards.
 
 <img src="ToggleB.png" width="30%">
 
@@ -58,7 +58,7 @@ In the web application, R1 is shown with a stepped colour scale (yellow/orange/r
 
 ### Interactive Display and Area Assessment
 
-The application allows users to **explore coastal hazard indicators** across the Northwestern Black Sea and perform **area-based assessments** for locations of interest.
+The application allows users to **explore coastal hazard indicators** across the Western Black Sea and perform **area-based assessments** for locations of interest.
 
 Users can:
 
