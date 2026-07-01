@@ -88,6 +88,6 @@ The GCOAST-BS system has undergone FOCCUS-specific improvements related to diffe
 - Improving bathymetry and seabed morphology using newer datasets from EMODnet.
 - Interfacing with regional reanalysis products using a parametric 2D wave spectrum derived from CMEMS.
 
-<img src="WPs.png" width="40%">
+<img src="demo_flowchart.png" width="60%">
 
 The assessment methodology in this demonstrator is a combination of previously published work by [(Gramcianinov et al. 2026)](https://doi.org/10.1016/j.ocemod.2026.102749) and detailed beach-scale erosion studies at Norderney [(Silva et al. 2026)](https://doi.org/10.1016/j.jenvman.2026.128756).
