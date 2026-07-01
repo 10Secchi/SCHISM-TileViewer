@@ -26,8 +26,8 @@ from pmtiles.reader import Reader
 ENDPOINT_URL = "https://minio.dive.edito.eu"
 S3_BUCKET = "oidc-jacobb"
 S3_PREFIX = "Hereon/IndicatorAssesment_douglas"
-DEFAULT_RUN_DATE = dt.date(2020, 6, 4)
-DEFAULT_DOMAIN_BOUNDS = (41.10, 27.40, 46.68, 31.5)
+DEFAULT_RUN_DATE = dt.date(2026, 6, 4)
+DEFAULT_DOMAIN_BOUNDS = (41.25, 27.44, 46.66, 31.63)
 MIN_BOUNDS_SPAN_DEG = 0.5
 
 # Erosion risk (R1) — categorical colors matching geotiff_app_s3.py.
