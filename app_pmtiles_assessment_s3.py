@@ -100,16 +100,16 @@ INDICATOR_LAYERS: dict[str, dict[str, Any]] = {
         "value_max_default": 1.0,
         "use_domain_bounds": True,
     },
-    "Vegetation (nveg)": {
-        "file": "nveg_tris.pmtiles",
-        "nc_file": "nveg.nc",
-        "nc_variable": "nveg",
-        "attribute": "nveg",
-        "caption": "Vegetation cover (nveg)",
-        "unit": "-",
-        "cmap": "Greens",
-        "critical_default": 0.5,
-    },
+    # "Vegetation (nveg)": {
+    #     "file": "nveg_tris.pmtiles",
+    #     "nc_file": "nveg.nc",
+    #     "nc_variable": "nveg",
+    #     "attribute": "nveg",
+    #     "caption": "Vegetation cover (nveg)",
+    #     "unit": "-",
+    #     "cmap": "Greens",
+    #     "critical_default": 0.5,
+    # },
 }
 
 
