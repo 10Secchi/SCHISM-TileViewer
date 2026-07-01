@@ -10,7 +10,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 APP_DIR = Path(__file__).resolve().parent
-ESC1GB_MD = APP_DIR / "ESC1GB.md"
+ESC1GB_MD = APP_DIR / "ESC1BS.md"
 IFRAME_RE = re.compile(r"<iframe\b.*?</iframe>", re.IGNORECASE | re.DOTALL)
 IFRAME_SRC_RE = re.compile(r'src="([^"]+)"', re.IGNORECASE)
 INSERT_DIRECTIVE_RE = re.compile(r'streamlit_insert_pdf="([^"]+)"', re.IGNORECASE)
