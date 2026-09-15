@@ -24,9 +24,18 @@ from jinja2 import Template
 from pmtiles.reader import Reader
 
 ENDPOINT_URL = "https://minio.dive.edito.eu"
-S3_BUCKET = "oidc-jacobb"
-S3_PREFIX = "Hereon/IndicatorAssesment_douglas"
-DEFAULT_RUN_DATE = dt.date(2026, 6, 4)
+S3_BUCKET = "project-foccus"
+S3_PREFIX = "Hereon/ESC1-123-BS/SCHISM/2020-2021"
+RUN_PERIOD_LABEL = "2020-2021"
+SCENARIO_FOLDERS: dict[str, dict[str, str]] = {
+    "novegetation": {"pmtiles": "indicator_pmtiles_noveg", "nc": "indicator_nc_noveg"},
+    "vegetation": {"pmtiles": "indicator_pmtiles_veg", "nc": "indicator_nc_veg"},
+}
+SCENARIO_LABELS: dict[str, str] = {
+    "novegetation": "No vegetation",
+    "vegetation": "Vegetation",
+}
+DEFAULT_SCENARIO = "novegetation"
 DEFAULT_DOMAIN_BOUNDS = (41.25, 27.44, 46.66, 31.63)
 MIN_BOUNDS_SPAN_DEG = 0.5
 
@@ -309,9 +318,12 @@ def public_s3_url(bucket: str, key: str) -> str:
     return f"{ENDPOINT_URL.rstrip('/')}/{bucket}/{key.lstrip('/')}"
 
 
-def run_date_folder(run_date: dt.date) -> str:
-    return run_date.strftime("%Y%m%d")
+#def run_date_folder(run_date: dt.date) -> str:
+#    return run_date.strftime("%Y%m%d")
 
+def scenario_folder(scenario: str, filename: str) -> str:
+    kind = "pmtiles" if filename.endswith(".pmtiles") else "nc"
+    return SCENARIO_FOLDERS[scenario][kind]
 
 def effective_map_bounds(
     bounds: tuple[float, float, float, float],
@@ -326,10 +338,13 @@ def effective_map_bounds(
     return bounds
 
 
-def indicator_s3_uri(run_date: dt.date, filename: str) -> str:
-    folder = run_date_folder(run_date)
-    return f"s3://{S3_BUCKET}/{S3_PREFIX}/{folder}/{filename}"
+#def indicator_s3_uri(run_date: dt.date, filename: str) -> str:
+#    folder = run_date_folder(run_date)
+#    return f"s3://{S3_BUCKET}/{S3_PREFIX}/{folder}/{filename}"
 
+def indicator_s3_uri(scenario: str, filename: str) -> str:
+    folder = scenario_folder(scenario, filename)
+    return f"s3://{S3_BUCKET}/{S3_PREFIX}/{folder}/{filename}"
 
 def s3_get_bytes(bucket: str, key: str, offset: int, length: int) -> bytes:
     client = _s3_client()
