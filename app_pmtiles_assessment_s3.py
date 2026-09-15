@@ -24,7 +24,11 @@ from streamlit_folium import st_folium
 from assessment_report import add_legend_box, build_assessment_pdf_bytes
 from pmtiles_s3_common import (
     CMAP_OPTIONS,
-    DEFAULT_RUN_DATE,
+    #DEFAULT_RUN_DATE,
+    DEFAULT_SCENARIO,
+    RUN_PERIOD_LABEL,
+    SCENARIO_LABELS,
+    scenario_folder,
     ENDPOINT_URL,
     EROSION_R1_CMAP,
     EROSION_R1_BAND_LABELS,
@@ -44,7 +48,7 @@ from pmtiles_s3_common import (
     load_pmtiles_info_from_s3,
     parse_s3_uri,
     public_s3_url,
-    run_date_folder,
+    #run_date_folder,
     s3_object_size,
     start_pmtiles_proxy_url,
 )
@@ -100,16 +104,16 @@ INDICATOR_LAYERS: dict[str, dict[str, Any]] = {
         "value_max_default": 1.0,
         "use_domain_bounds": True,
     },
-    # "Vegetation (nveg)": {
-    #     "file": "nveg_tris.pmtiles",
-    #     "nc_file": "nveg.nc",
-    #     "nc_variable": "nveg",
-    #     "attribute": "nveg",
-    #     "caption": "Vegetation cover (nveg)",
-    #     "unit": "-",
-    #     "cmap": "Greens",
-    #     "critical_default": 0.5,
-    # },
+    "Vegetation (nveg)": {
+        "file": "nveg_tris.pmtiles",
+        "nc_file": "nveg.nc",
+        "nc_variable": "nveg",
+        "attribute": "nveg",
+        "caption": "Vegetation cover (nveg)",
+        "unit": "-",
+        "cmap": "Greens",
+        "critical_default": 0.5,
+    },
 }
 
 
@@ -126,9 +130,10 @@ class SchismPMTilesLayerAssessment(SchismPMTilesLayer):
         )
 
 
-def _indicator_nc_s3_uri(run_date: dt.date, nc_file: str) -> str:
-    return indicator_s3_uri(run_date, nc_file)
-
+#def _indicator_nc_s3_uri(run_date: dt.date, nc_file: str) -> str:
+#    return indicator_s3_uri(run_date, nc_file)
+def _indicator_nc_s3_uri(scenario: str, nc_file: str) -> str:
+    return indicator_s3_uri(scenario, nc_file)
 
 @st.cache_data(show_spinner="Loading indicator NetCDF…", ttl=3600)
 def _load_indicator_nc_cached(bucket: str, key: str) -> bytes:
@@ -248,19 +253,43 @@ def run_dashboard(*, configure_page: bool = True) -> None:
 
     indicator_names = list(INDICATOR_LAYERS)
 
+#    Debug = False
+#    with st.container(border=True):
+#        tb_run, tb_ind, tb_crit = st.columns([1, 1, 1], vertical_alignment="bottom")
+#        with tb_run:
+#            run_date = st.date_input("Run date", value=DEFAULT_RUN_DATE)
+#        run_folder = run_date_folder(run_date)
+
+#        with tb_ind:
+#            indicator_label = st.selectbox("Indicator", options=indicator_names, index=0)
+#        layer_cfg = INDICATOR_LAYERS[indicator_label]
+
+#        pmtiles_uri = indicator_s3_uri(run_date, layer_cfg["file"])
+#        nc_uri = _indicator_nc_s3_uri(run_date, layer_cfg["nc_file"])
+
     Debug = False
     with st.container(border=True):
         tb_run, tb_ind, tb_crit = st.columns([1, 1, 1], vertical_alignment="bottom")
         with tb_run:
-            run_date = st.date_input("Run date", value=DEFAULT_RUN_DATE)
-        run_folder = run_date_folder(run_date)
+            scenario_choice = st.selectbox(
+                "Scenario",
+                options=list(SCENARIO_LABELS.values()),
+                index=list(SCENARIO_LABELS.keys()).index(DEFAULT_SCENARIO),
+            )
+            scenario = next(k for k, v in SCENARIO_LABELS.items() if v == scenario_choice)
+            st.caption(f"Period: {RUN_PERIOD_LABEL}")
+        run_folder = scenario_folder(scenario, "placeholder.nc")  # for the Debug caption below
 
+        indicator_names = [
+            name for name in INDICATOR_LAYERS
+            if name != "Vegetation (nveg)" or scenario == "vegetation"
+        ]
         with tb_ind:
             indicator_label = st.selectbox("Indicator", options=indicator_names, index=0)
         layer_cfg = INDICATOR_LAYERS[indicator_label]
 
-        pmtiles_uri = indicator_s3_uri(run_date, layer_cfg["file"])
-        nc_uri = _indicator_nc_s3_uri(run_date, layer_cfg["nc_file"])
+        pmtiles_uri = indicator_s3_uri(scenario, layer_cfg["file"])
+        nc_uri = _indicator_nc_s3_uri(scenario, layer_cfg["nc_file"])
 
         is_erosion_r1 = layer_cfg.get("cmap") == EROSION_R1_CMAP
         with tb_crit:
@@ -319,7 +348,8 @@ def run_dashboard(*, configure_page: bool = True) -> None:
 
         n_bucket, n_key = parse_s3_uri(nc_uri)
         _load_indicator_nc_cached(n_bucket, n_key)  # warm cache for polygon assessment
-        index_uri = indicator_s3_uri(run_date, MESH_INDEX_FILENAME)
+        #index_uri = indicator_s3_uri(run_date, MESH_INDEX_FILENAME)
+        index_uri = indicator_s3_uri(scenario, MESH_INDEX_FILENAME)
         idx_bucket, idx_key = parse_s3_uri(index_uri)
         _mesh_index_bbox_for_assessment(n_bucket, n_key, idx_bucket, idx_key)  # warm spatial index
     except Exception as exc:
