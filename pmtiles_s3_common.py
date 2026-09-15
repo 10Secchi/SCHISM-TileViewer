@@ -30,10 +30,12 @@ RUN_PERIOD_LABEL = "2020-2021"
 SCENARIO_FOLDERS: dict[str, dict[str, str]] = {
     "novegetation": {"pmtiles": "indicator_pmtiles_noveg", "nc": "indicator_nc_noveg"},
     "vegetation": {"pmtiles": "indicator_pmtiles_veg", "nc": "indicator_nc_veg"},
+    "difference": {"nc": "indicator_nc_diff", "pmtiles": "indicator_pmtiles_diff"},
 }
 SCENARIO_LABELS: dict[str, str] = {
     "novegetation": "No vegetation",
     "vegetation": "Vegetation",
+    "difference": "Difference (veg - no veg)",
 }
 DEFAULT_SCENARIO = "novegetation"
 DEFAULT_DOMAIN_BOUNDS = (41.25, 27.44, 46.66, 31.63)
