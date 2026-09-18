@@ -21,6 +21,7 @@ st.set_page_config(
 
 about = st.Page(render_about_page, title="About", icon="📖", default=True)
 dashboard = st.Page("foccus_dashboard_page.py", title="Dashboard", icon="🗺️")
+xbeach_dashboard = st.Page("xbeach_dashboard_page.py", title="XBeach (beta)", icon="🏖️")
 
-pg = st.navigation([about, dashboard])
+pg = st.navigation([about, dashboard, xbeach_dashboard])
 pg.run()
