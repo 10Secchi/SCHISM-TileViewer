@@ -12,15 +12,29 @@ had been manually uploaded) with the cross-storm `all_storms` indicator
 set -- see `xbeach_app_integration/README.md`'s
 "xbeach_cross_storm_indicators.py" section. Each of the 12 domains now
 has ONE overall index built from all its valid storms (a median and a
-95th-percentile map per indicator), so there is no storm axis anymore,
-and the S3 key layout drops the old `<storm>/<scenario>` nesting below
-the period folder (domain ids are NOT zero-padded here, matching the
-local `all_storms/<domain>_veg<scenario>/` folder names, unlike the old
-per-storm layout). Verified 2026-09-22 against the real uploaded objects
-at `.../XBEACH/BULGARIA/2020-2021/<domain>_veg0/indicator_{nc,pmtiles}/`
--- the period folder (`2020-2021`) is KEPT (a first guess that dropped it
-turned out wrong; confirmed by `head_object` against several real keys
-before this was fixed).
+95th-percentile map per indicator), so there is no storm axis anymore.
+The period folder (`2020-2021`) is KEPT below the region folder (a first
+guess that dropped it turned out wrong; confirmed by `head_object`
+against several real keys before this was fixed).
+
+Updated again 2026-09-22 (same day, later): the per-domain S3 "folder"
+nesting (`<domain>_veg<scenario>/indicator_{nc,pmtiles}/<indicator>.*`)
+was replaced with a FLAT layout -- two folders directly under the period
+folder, domain+scenario folded into the filename instead:
+`indicator_{nc,pmtiles}/<domain_id>_<scenario>_<indicator>[_quads].*`.
+Reason: nesting meant uploading 12 separate per-domain folders by hand;
+flat means one `indicator_nc/` and one `indicator_pmtiles/` folder can be
+uploaded in a single pass. See `xbeach_app_integration/
+build_edito_upload_bundle.py`, which builds this exact flat tree locally
+from the existing per-domain `all_storms/<domain>_veg<scenario>/
+indicator_{nc,pmtiles_v2}/` files (PMTiles source is `indicator_pmtiles_v2/`,
+the tile-size-cap fix, not the currently-live `indicator_pmtiles/` -- see
+that script's docstring and `README.md`'s tippecanoe tile-size-cap
+section). **This changes the S3 keys this module resolves -- the actual
+objects on EDITO have not been re-uploaded to the new keys yet as of this
+edit, so `load_pmtiles_info_from_s3` will 404 against real S3 until the
+`edito_upload/BULGARIA/2020-2021/` bundle is uploaded to replace the old
+per-domain-folder objects.**
 """
 from __future__ import annotations
 
@@ -136,16 +150,16 @@ XBEACH_STAT_LABELS: dict[str, str] = {
 XBEACH_DEFAULT_STAT = "median"
 
 
-def xbeach_domain_folder(domain_id: int, scenario: str) -> str:
-    return f"{domain_id}_{scenario}"
-
-
 def xbeach_indicator_s3_uri(region: str, domain_id: int, scenario: str, filename: str) -> str:
-    """s3://<bucket>/<base_prefix>/<region folder>/<domain_id>_<scenario>/<indicator_nc|indicator_pmtiles>/<filename>
+    """s3://<bucket>/<base_prefix>/<region folder>/<period>/<indicator_nc|indicator_pmtiles>/<domain_id>_<scenario>_<filename>
 
-    e.g. `.../XBEACH/BULGARIA/2020-2021/1_veg0/indicator_pmtiles/erosion_quads.pmtiles`.
+    e.g. `.../XBEACH/BULGARIA/2020-2021/indicator_pmtiles/1_veg0_erosion_quads.pmtiles`.
+
+    Flat layout (2026-09-22): domain+scenario is folded into the filename
+    rather than being its own S3 "folder", so all 12 domains' files sit in
+    one `indicator_nc/` and one `indicator_pmtiles/` folder -- see this
+    module's docstring and `build_edito_upload_bundle.py`.
     """
     folder = "indicator_pmtiles" if filename.endswith(".pmtiles") else "indicator_nc"
     prefix = xbeach_s3_prefix(region)
-    domain_folder = xbeach_domain_folder(domain_id, scenario)
-    return f"s3://{XBEACH_S3_BUCKET}/{prefix}/{domain_folder}/{folder}/{filename}"
+    return f"s3://{XBEACH_S3_BUCKET}/{prefix}/{folder}/{domain_id}_{scenario}_{filename}"
