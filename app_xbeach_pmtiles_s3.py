@@ -1,14 +1,20 @@
 """
 XBeach indicator viewer: PMTiles map only (S3).
 
-MVP slice of xbeach_app_integration/PLAN.md's step 5: prove the uploaded
-XBeach indicator PMTiles (domains 01/02, storm 2020.03.15, novegetation)
-render correctly, using the same MapLibre/PMTiles machinery as the SCHISM
-dashboard. Deliberately does NOT include polygon-based area assessment
-(stats/threshold-map/histogram panels) -- that needs the quad spatial index
-(PLAN.md step 5.3) and the polygon-over-quads reduction (step 5.4), neither
-built yet. Add those panels once that data exists, following
-`app_pmtiles_assessment_s3.py`'s pattern.
+MVP slice of xbeach_app_integration/PLAN.md's step 5, using the same
+MapLibre/PMTiles machinery as the SCHISM dashboard. Deliberately does NOT
+include polygon-based area assessment (stats/threshold-map/histogram
+panels) -- that needs the quad spatial index (PLAN.md step 5.3) and the
+polygon-over-quads reduction (step 5.4), neither built yet. Add those
+panels once that data exists, following `app_pmtiles_assessment_s3.py`'s
+pattern.
+
+Updated 2026-09-22: switched from one storm's indicators at a time (with
+a Storm selector, gated to 2 manually-uploaded (domain, storm) pairs) to
+the cross-storm `all_storms` overall index -- every domain is a single
+median/p95-across-storms summary now, so there's no storm to pick and no
+publish allowlist; all 12 domains are listed (see
+`xbeach_pmtiles_common.py`'s XBEACH_DOMAIN_LABELS docstring).
 
 Run: streamlit run app_xbeach_pmtiles_s3.py
 """
@@ -36,25 +42,26 @@ from pmtiles_s3_common import (
 )
 from xbeach_pmtiles_common import (
     XBEACH_DEFAULT_SCENARIO,
+    XBEACH_DEFAULT_STAT,
     XBEACH_DOMAIN_LABELS,
+    XBEACH_INDICATOR_LABELS,
     XBEACH_INDICATOR_LAYERS,
-    XBEACH_PUBLISHED_RUNS,
     XBEACH_SCENARIO_LABELS,
-    XBEACH_STORMS,
-    XBEACH_TAU_UNSTABLE_DOMAINS,
+    XBEACH_STAT_LABELS,
     xbeach_indicator_s3_uri,
 )
 
 REGION = "BULGARIA"
 
+# EDITO's OpenStreetMap tiles work with no key; the other folium basemap
+# options (CartoDB positron/dark_matter) started requiring an API key and
+# were dropped from the picker rather than left in as a dead-end choice.
+BASEMAP = "OpenStreetMap"
+
 PANEL_BLUE = "#1e3a8a"
 FOCCUS_LOGO = Path(__file__).resolve().parent / "FOCCUS_Logo_clean RGB_whiteBG.png"
 if not FOCCUS_LOGO.is_file():
     FOCCUS_LOGO = Path(__file__).resolve().parent / "FOCCUS_Logo_clean RGB.png"
-
-
-def _storm_label(storm: str) -> str:
-    return storm.removeprefix("time_interval_")
 
 
 @st.cache_data(show_spinner="Checking published runs…", ttl=3600)
@@ -86,24 +93,18 @@ def run_xbeach_dashboard(*, configure_page: bool = True) -> None:
     with hdr_text:
         st.markdown("**FOCCUS Demonstrator — XBeach storm-response indicators (Bulgaria)**")
         st.caption(
-            "Per-beach XBeach runs, one storm and domain at a time — a different axis "
-            "from the SCHISM dashboard's single continuous mesh."
+            "Cross-storm overall index per beach domain (median / 95th percentile across "
+            "every valid storm) — a different axis from the SCHISM dashboard's single "
+            "continuous mesh."
         )
 
     with st.container(border=True):
-        c_domain, c_storm, c_scenario, c_ind = st.columns([2, 2, 2, 2], vertical_alignment="bottom")
+        c_domain, c_scenario, c_ind, c_stat = st.columns([2, 2, 3, 2], vertical_alignment="bottom")
         with c_domain:
             domain_id = st.selectbox(
                 "Domain",
                 options=sorted(XBEACH_DOMAIN_LABELS),
                 format_func=lambda d: XBEACH_DOMAIN_LABELS[d],
-                index=0,
-            )
-        with c_storm:
-            storm = st.selectbox(
-                "Storm",
-                options=XBEACH_STORMS,
-                format_func=_storm_label,
                 index=0,
             )
         with c_scenario:
@@ -113,34 +114,37 @@ def run_xbeach_dashboard(*, configure_page: bool = True) -> None:
                 index=list(XBEACH_SCENARIO_LABELS.keys()).index(XBEACH_DEFAULT_SCENARIO),
             )
             scenario = next(k for k, v in XBEACH_SCENARIO_LABELS.items() if v == scenario_choice)
-        indicator_names = [
-            name
-            for name in XBEACH_INDICATOR_LAYERS
-            if not (name == "Bed stress q95" and domain_id in XBEACH_TAU_UNSTABLE_DOMAINS)
-        ]
         with c_ind:
-            indicator_label = st.selectbox("Indicator", options=indicator_names, index=0)
-        layer_cfg = XBEACH_INDICATOR_LAYERS[indicator_label]
+            indicator_key = st.selectbox(
+                "Indicator",
+                options=list(XBEACH_INDICATOR_LAYERS),
+                format_func=lambda k: XBEACH_INDICATOR_LABELS[k],
+                index=0,
+            )
+        layer_cfg = XBEACH_INDICATOR_LAYERS[indicator_key]
+        with c_stat:
+            stat_key = st.selectbox(
+                "Statistic",
+                options=list(XBEACH_STAT_LABELS),
+                format_func=lambda k: XBEACH_STAT_LABELS[k],
+                index=list(XBEACH_STAT_LABELS).index(XBEACH_DEFAULT_STAT),
+            )
 
-    if (domain_id, storm) not in XBEACH_PUBLISHED_RUNS:
-        st.warning(
-            f"{XBEACH_DOMAIN_LABELS[domain_id]}, storm {_storm_label(storm)} isn't published to "
-            "S3 yet — only domains 1 and 2 (storm 2020.03.15) are live so far. "
-            "See xbeach_app_integration/PLAN.md steps 1-4 for the rest of the batch."
-        )
-        st.stop()
-
-    pmtiles_uri = xbeach_indicator_s3_uri(REGION, domain_id, storm, scenario, layer_cfg["file"])
+    pmtiles_uri = xbeach_indicator_s3_uri(REGION, domain_id, scenario, layer_cfg["file"])
+    value_attribute = f"{indicator_key}_{stat_key}"
 
     try:
         p_bucket, p_key = parse_s3_uri(pmtiles_uri)
         if not _pmtiles_exists(p_bucket, p_key):
-            st.warning(f"PMTiles file looks empty or missing ({pmtiles_uri}).")
+            st.warning(
+                f"{XBEACH_DOMAIN_LABELS[domain_id]} isn't published to S3 yet "
+                f"({pmtiles_uri}). See xbeach_app_integration/PLAN.md step 4."
+            )
             st.stop()
         info = load_pmtiles_info_from_s3(
             p_bucket,
             p_key,
-            value_attribute=layer_cfg["attribute"],
+            value_attribute=value_attribute,
         )
         pmtiles_url = public_s3_url(p_bucket, p_key)
     except Exception as exc:
@@ -152,7 +156,9 @@ def run_xbeach_dashboard(*, configure_page: bool = True) -> None:
     center_lon = (west + east) / 2.0
     value_attr = info["value_attribute"]
     unit = layer_cfg.get("unit", "")
-    var_label = f"{indicator_label} ({unit})" if unit else indicator_label
+    indicator_label = XBEACH_INDICATOR_LABELS[indicator_key]
+    stat_label = XBEACH_STAT_LABELS[stat_key]
+    var_label = f"{layer_cfg['caption']} — {stat_label} ({unit})" if unit else f"{layer_cfg['caption']} — {stat_label}"
 
     data_vmin = float(info["value_min"])
     data_vmax = float(info["value_max"])
@@ -170,13 +176,7 @@ def run_xbeach_dashboard(*, configure_page: bool = True) -> None:
                 "Colormap",
                 options=list(CMAP_OPTIONS),
                 index=default_cmap_index(default_cmap),
-                key=f"xbeach_cmap_{indicator_label}",
-            )
-            f_basemap = st.selectbox(
-                "Basemap",
-                options=["OpenStreetMap", "CartoDB positron", "CartoDB dark_matter"],
-                index=1,
-                key="xbeach_basemap_choice",
+                key=f"xbeach_cmap_{value_attribute}",
             )
             f_opacity = st.slider(
                 "Mesh overlay opacity", 0.1, 1.0, 0.85, 0.05, key="xbeach_mesh_opacity"
@@ -187,7 +187,7 @@ def run_xbeach_dashboard(*, configure_page: bool = True) -> None:
                 max_value=float(data_vmax),
                 value=(float(data_vmin), float(data_vmax)),
                 step=max((data_vmax - data_vmin) / 200.0, 1e-4),
-                key=f"xbeach_range_{indicator_label}",
+                key=f"xbeach_range_{value_attribute}",
             )
         st.metric("Value min", f"{data_vmin:.4g} {unit}")
         st.metric("Value max", f"{data_vmax:.4g} {unit}")
@@ -198,7 +198,7 @@ def run_xbeach_dashboard(*, configure_page: bool = True) -> None:
                 location=[center_lat, center_lon],
                 zoom_start=data_min_zoom,
                 max_zoom=data_max_zoom + 1,
-                tiles=f_basemap,
+                tiles=BASEMAP,
                 control_scale=True,
             )
             Fullscreen().add_to(fm)

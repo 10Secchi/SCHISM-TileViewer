@@ -3,14 +3,20 @@
 Generic PMTiles reading/rendering (parse_s3_uri, load_pmtiles_info_from_s3,
 build_maplibre_style, SchismPMTilesLayer, add_map_legend, ...) is reused
 as-is from `pmtiles_s3_common` -- none of that is SCHISM-specific. This
-module only holds the pieces that differ: the S3 key layout (XBeach has two
-more axes than SCHISM's one continuous run -- domain and storm, see
-`xbeach_app_integration/PLAN.md`), the indicator set, and domain labels.
+module only holds the pieces that differ: the S3 key layout, the
+indicator set, and domain labels.
 
-Copied from `xbeach_app_integration/xbeach_pmtiles_common_draft.py` in the
-NWBS-XB-2020 repo (2026-09-18), with `XBEACH_DOMAIN_LABELS` filled in from
-`visualization/storm_viewer.ipynb`'s `DOMAIN_NAMES` (left as a placeholder
-in the draft to avoid hand-retyping it out of sync with the notebook).
+Updated 2026-09-22: replaced the original per-storm q95_Hrms/q95_tau/dz
+export (one storm at a time, gated to the 2 (domain, storm) pairs that
+had been manually uploaded) with the cross-storm `all_storms` indicator
+set -- see `xbeach_app_integration/README.md`'s
+"xbeach_cross_storm_indicators.py" section. Each of the 12 domains now
+has ONE overall index built from all its valid storms (a median and a
+95th-percentile map per indicator), so there is no storm axis anymore,
+and the S3 key layout drops the old `<storm>/<scenario>` nesting to match
+the local `xbeach_app_integration/<region>/all_storms/<domain>_veg
+<scenario>/` folder shape exactly (domain ids are NOT zero-padded here,
+matching those folder names, unlike the old per-storm layout).
 """
 from __future__ import annotations
 
@@ -22,37 +28,30 @@ from typing import Any
 XBEACH_S3_BUCKET = "project-foccus"
 XBEACH_S3_BASE_PREFIX = "Hereon/ESC1-123-BS/XBEACH"
 
-# Region goes BEFORE the date-range period (not after), on purpose: this
-# repo only has Bulgaria today, but a future Romania coast dataset almost
-# certainly won't share "2020-2021" as its storm-batch period, so the
-# period has to live under the region, not be a sibling of it.
-XBEACH_REGION_PERIODS: dict[str, str] = {
-    "BULGARIA": "2020-2021",
+# Region folder name on S3 -- kept uppercase on EDITO by the user's choice
+# (2026-09-22), unlike the local `xbeach_app_integration/<region>/`
+# directory name which is lowercase. No separate date-range period
+# segment anymore: the cross-storm index isn't tied to one storm-batch
+# period the way the old per-storm export was.
+XBEACH_REGION_FOLDERS: dict[str, str] = {
+    "BULGARIA": "BULGARIA",
 }
-
-# Zero-padded to this many digits in the S3 key (e.g. domain 1 -> "01"),
-# per the manual EDITO layout worked out 2026-09-18. Bulgaria's 12 domains
-# fit in 2 digits; bump this (or make it per-region) if a future region
-# has 100+ domains.
-XBEACH_DOMAIN_ID_WIDTH = 2
 
 
 def xbeach_s3_prefix(region: str) -> str:
-    period = XBEACH_REGION_PERIODS[region]
-    return f"{XBEACH_S3_BASE_PREFIX}/{region}/{period}"
+    return f"{XBEACH_S3_BASE_PREFIX}/{XBEACH_REGION_FOLDERS[region]}"
 
 
-# Only "novegetation" (scenario 0 in this repo's run_status.csv) has been
-# run so far. Add "vegetation" here once scenario 1 runs exist.
-XBEACH_SCENARIO_FOLDERS: dict[str, dict[str, str]] = {
-    "novegetation": {"pmtiles": "indicator_pmtiles", "nc": "indicator_nc"},
-}
+# Only "veg0" (no vegetation, scenario 0 in run_status.csv) has been run
+# so far. Add a "veg1" entry here once a vegetation-scenario batch exists.
 XBEACH_SCENARIO_LABELS: dict[str, str] = {
-    "novegetation": "No vegetation",
+    "veg0": "No vegetation",
 }
-XBEACH_DEFAULT_SCENARIO = "novegetation"
+XBEACH_DEFAULT_SCENARIO = "veg0"
 
-# From storm_viewer.ipynb's DOMAIN_NAMES.
+# From storm_viewer.ipynb's DOMAIN_NAMES. All 12 are valid: every domain
+# had >=10/12 valid storms feeding its cross-storm index (see
+# `bulgaria/all_storms/domain_summary.csv`) and none was dropped.
 XBEACH_DOMAIN_LABELS: dict[int, str] = {
     1: "1 — Dyavolska-Primorsko",
     2: "2 — Atliman",
@@ -68,87 +67,76 @@ XBEACH_DOMAIN_LABELS: dict[int, str] = {
     12: "12 — Nessebar",
 }
 
-# Every storm in this project's batch (run_status.csv). Kept as the FULL
-# "time_interval_<date>" string on purpose, matching run_status.csv's own
-# `storm` column and the local repo's folder name exactly.
-XBEACH_STORMS: list[str] = [
-    "time_interval_2020.03.15", "time_interval_2020.03.23", "time_interval_2020.04.05",
-    "time_interval_2020.07.18", "time_interval_2020.08.05", "time_interval_2020.09.12",
-    "time_interval_2020.09.15", "time_interval_2020.12.07", "time_interval_2020.12.14",
-    "time_interval_2021.01.11", "time_interval_2021.02.14", "time_interval_2021.02.15",
-]
-
-# As of 2026-09-18, only these (domain, storm) pairs have indicator PMTiles
-# actually uploaded to S3 (see xbeach_app_integration/PLAN.md steps 1-4 for
-# the rest of the batch). Selecting anything else shows a clear "not
-# published yet" message instead of a raw S3 error.
-XBEACH_PUBLISHED_RUNS: set[tuple[int, str]] = {
-    (1, "time_interval_2020.03.15"),
-    (2, "time_interval_2020.03.15"),
-}
-
-# indicator key -> layer config, same shape as SCHISM's INDICATOR_LAYERS.
+# indicator key -> layer config. Matches xbeach_cross_storm_indicators.py's
+# INDICATOR_KEYS/INDICATOR_SPECS. Each file holds BOTH statistics as two
+# properties/variables (`<key>_median`, `<key>_p95`) rather than one file
+# per statistic -- the UI's "Statistic" selector below picks the attribute
+# within the already-loaded file, not a different S3 object.
 XBEACH_INDICATOR_LAYERS: dict[str, dict[str, Any]] = {
-    "Hrms wave height q95": {
-        "file": "q95_Hrms_quads.pmtiles",
-        "nc_file": "q95_Hrms.nc",
-        "nc_variable": "q95_Hrms",
-        "attribute": "q95_Hrms",
-        "caption": "Hrms q95 (m)",
-        "unit": "m",
+    "roller_energy": {
+        "file": "roller_energy_quads.pmtiles",
+        "nc_file": "roller_energy.nc",
+        "caption": "Roller energy dissipation",
+        "unit": "Nm/m²",
         "cmap": "plasma",
-        "critical_default": 1.5,
     },
-    "Bed stress q95": {
-        "file": "q95_tau_quads.pmtiles",
-        "nc_file": "q95_tau.nc",
-        "nc_variable": "q95_tau",
-        "attribute": "q95_tau",
-        "caption": "Bed stress q95 (N/m²)",
-        "unit": "Pa",
+    "tau": {
+        "file": "tau_quads.pmtiles",
+        "nc_file": "tau.nc",
+        "caption": "Bed shear stress",
+        "unit": "N/m²",
         "cmap": "plasma",
-        "critical_default": 0.5,
-        # NOT enabled for domains 6/9/11 until the near-drying-cell
-        # instability in xbeach_app_integration/README.md is resolved -- a
-        # single bad cell reading 600+ Pa would swamp the color scale for
-        # the whole domain. Filtered in the UI layer below, not here.
     },
-    "Bed-level change (dz)": {
-        "file": "dz_quads.pmtiles",
-        "nc_file": "dz.nc",
-        "nc_variable": "dz",
-        "attribute": "dz",
-        "caption": "Cumulative bed change (m)",
+    "erosion": {
+        "file": "erosion_quads.pmtiles",
+        "nc_file": "erosion.nc",
+        "caption": "Cumulative bed change",
         "unit": "m",
         "cmap": "RdYlBu_r",  # diverging: erosion vs. accretion
-        "critical_default": -0.5,
+    },
+    "flooded_depth": {
+        "file": "flooded_depth_quads.pmtiles",
+        "nc_file": "flooded_depth.nc",
+        "caption": "Peak water-level rise",
+        "unit": "m",
+        "cmap": "viridis",
+    },
+    "flood_duration": {
+        "file": "flood_duration_quads.pmtiles",
+        "nc_file": "flood_duration.nc",
+        "caption": "Flood duration",
+        "unit": "h",
+        "cmap": "YlOrRd",
     },
 }
+XBEACH_INDICATOR_LABELS: dict[str, str] = {
+    "roller_energy": "Roller energy (q95 across storms)",
+    "tau": "Bed shear stress (q95 across storms)",
+    "erosion": "Bed-level change (erosion/accretion)",
+    "flooded_depth": "Flooded depth (max rise)",
+    "flood_duration": "Flood duration",
+}
 
-# Domains where q95_tau is known to have the near-drying-cell instability
-# (README.md's "Known issue" section) -- hidden from the indicator picker
-# for those domains until xbeach_app_integration/PLAN.md step 1a is resolved.
-XBEACH_TAU_UNSTABLE_DOMAINS: set[int] = {6, 9, 11}
+# The two statistics every indicator file carries, both computed across
+# a domain's valid storms (xbeach_cross_storm_indicators.py) -- not two
+# different files, two properties on the same one.
+XBEACH_STAT_LABELS: dict[str, str] = {
+    "median": "Median across storms",
+    "p95": "95th percentile across storms",
+}
+XBEACH_DEFAULT_STAT = "median"
 
 
-def xbeach_scenario_folder(scenario: str, kind: str) -> str:
-    return XBEACH_SCENARIO_FOLDERS[scenario][kind]
+def xbeach_domain_folder(domain_id: int, scenario: str) -> str:
+    return f"{domain_id}_{scenario}"
 
 
-def xbeach_indicator_s3_uri(region: str, domain_id: int, storm: str, scenario: str, filename: str) -> str:
-    """s3://<bucket>/<base_prefix>/<REGION>/<period>/<domain_id (zero-padded)>/<storm>/<scenario>/<kind_folder>/<filename>"""
-    kind = "pmtiles" if filename.endswith(".pmtiles") else "nc"
-    folder = xbeach_scenario_folder(scenario, kind)
-    domain_key = f"{domain_id:0{XBEACH_DOMAIN_ID_WIDTH}d}"
+def xbeach_indicator_s3_uri(region: str, domain_id: int, scenario: str, filename: str) -> str:
+    """s3://<bucket>/<base_prefix>/<region folder>/<domain_id>_<scenario>/<indicator_nc|indicator_pmtiles>/<filename>
+
+    e.g. `.../XBEACH/BULGARIA/1_veg0/indicator_pmtiles/erosion_quads.pmtiles`.
+    """
+    folder = "indicator_pmtiles" if filename.endswith(".pmtiles") else "indicator_nc"
     prefix = xbeach_s3_prefix(region)
-    return f"s3://{XBEACH_S3_BUCKET}/{prefix}/{domain_key}/{storm}/{scenario}/{folder}/{filename}"
-
-
-def xbeach_quad_index_s3_uri(region: str, domain_id: int, storm: str, scenario: str) -> str:
-    """S3 URI for the per-(domain, storm) quad spatial index -- NOT built yet
-    (xbeach_app_integration/PLAN.md step 5.3), used only once polygon-based
-    area assessment is wired up for XBeach."""
-    folder = xbeach_scenario_folder(scenario, "nc")
-    domain_key = f"{domain_id:0{XBEACH_DOMAIN_ID_WIDTH}d}"
-    prefix = xbeach_s3_prefix(region)
-    return f"s3://{XBEACH_S3_BUCKET}/{prefix}/{domain_key}/{storm}/{scenario}/{folder}/quad_spatial_index.npz"
+    domain_folder = xbeach_domain_folder(domain_id, scenario)
+    return f"s3://{XBEACH_S3_BUCKET}/{prefix}/{domain_folder}/{folder}/{filename}"
