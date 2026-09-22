@@ -13,10 +13,14 @@ set -- see `xbeach_app_integration/README.md`'s
 "xbeach_cross_storm_indicators.py" section. Each of the 12 domains now
 has ONE overall index built from all its valid storms (a median and a
 95th-percentile map per indicator), so there is no storm axis anymore,
-and the S3 key layout drops the old `<storm>/<scenario>` nesting to match
-the local `xbeach_app_integration/<region>/all_storms/<domain>_veg
-<scenario>/` folder shape exactly (domain ids are NOT zero-padded here,
-matching those folder names, unlike the old per-storm layout).
+and the S3 key layout drops the old `<storm>/<scenario>` nesting below
+the period folder (domain ids are NOT zero-padded here, matching the
+local `all_storms/<domain>_veg<scenario>/` folder names, unlike the old
+per-storm layout). Verified 2026-09-22 against the real uploaded objects
+at `.../XBEACH/BULGARIA/2020-2021/<domain>_veg0/indicator_{nc,pmtiles}/`
+-- the period folder (`2020-2021`) is KEPT (a first guess that dropped it
+turned out wrong; confirmed by `head_object` against several real keys
+before this was fixed).
 """
 from __future__ import annotations
 
@@ -30,16 +34,21 @@ XBEACH_S3_BASE_PREFIX = "Hereon/ESC1-123-BS/XBEACH"
 
 # Region folder name on S3 -- kept uppercase on EDITO by the user's choice
 # (2026-09-22), unlike the local `xbeach_app_integration/<region>/`
-# directory name which is lowercase. No separate date-range period
-# segment anymore: the cross-storm index isn't tied to one storm-batch
-# period the way the old per-storm export was.
+# directory name which is lowercase.
 XBEACH_REGION_FOLDERS: dict[str, str] = {
     "BULGARIA": "BULGARIA",
 }
 
+# Date-range period folder, still present under the region on S3 even
+# though the cross-storm index itself isn't really tied to one storm
+# batch's period -- kept only because that's where the real upload landed.
+XBEACH_REGION_PERIODS: dict[str, str] = {
+    "BULGARIA": "2020-2021",
+}
+
 
 def xbeach_s3_prefix(region: str) -> str:
-    return f"{XBEACH_S3_BASE_PREFIX}/{XBEACH_REGION_FOLDERS[region]}"
+    return f"{XBEACH_S3_BASE_PREFIX}/{XBEACH_REGION_FOLDERS[region]}/{XBEACH_REGION_PERIODS[region]}"
 
 
 # Only "veg0" (no vegetation, scenario 0 in run_status.csv) has been run
@@ -134,7 +143,7 @@ def xbeach_domain_folder(domain_id: int, scenario: str) -> str:
 def xbeach_indicator_s3_uri(region: str, domain_id: int, scenario: str, filename: str) -> str:
     """s3://<bucket>/<base_prefix>/<region folder>/<domain_id>_<scenario>/<indicator_nc|indicator_pmtiles>/<filename>
 
-    e.g. `.../XBEACH/BULGARIA/1_veg0/indicator_pmtiles/erosion_quads.pmtiles`.
+    e.g. `.../XBEACH/BULGARIA/2020-2021/1_veg0/indicator_pmtiles/erosion_quads.pmtiles`.
     """
     folder = "indicator_pmtiles" if filename.endswith(".pmtiles") else "indicator_nc"
     prefix = xbeach_s3_prefix(region)
