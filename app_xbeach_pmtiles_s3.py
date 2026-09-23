@@ -16,6 +16,12 @@ median/p95-across-storms summary now, so there's no storm to pick and no
 publish allowlist; all 12 domains are listed (see
 `xbeach_pmtiles_common.py`'s XBEACH_DOMAIN_LABELS docstring).
 
+Updated 2026-09-23: added a Region selector (Bulgaria / Romania). Same S3
+layout per region (`XBEACH/<REGION>/2020-2021/indicator_{nc,pmtiles}/`),
+per-region domain labels from XBEACH_REGION_DOMAIN_LABELS, and an optional
+per-region note (XBEACH_REGION_NOTES) -- Romania is a preliminary
+single-storm test for now.
+
 Run: streamlit run app_xbeach_pmtiles_s3.py
 """
 
@@ -41,17 +47,18 @@ from pmtiles_s3_common import (
     s3_object_size,
 )
 from xbeach_pmtiles_common import (
+    XBEACH_DEFAULT_REGION,
     XBEACH_DEFAULT_SCENARIO,
     XBEACH_DEFAULT_STAT,
-    XBEACH_DOMAIN_LABELS,
     XBEACH_INDICATOR_LABELS,
     XBEACH_INDICATOR_LAYERS,
+    XBEACH_REGION_DOMAIN_LABELS,
+    XBEACH_REGION_LABELS,
+    XBEACH_REGION_NOTES,
     XBEACH_SCENARIO_LABELS,
     XBEACH_STAT_LABELS,
     xbeach_indicator_s3_uri,
 )
-
-REGION = "BULGARIA"
 
 # EDITO's OpenStreetMap tiles work with no key; the other folium basemap
 # options (CartoDB positron/dark_matter) started requiring an API key and
@@ -90,22 +97,28 @@ def run_xbeach_dashboard(*, configure_page: bool = True) -> None:
     with hdr_logo:
         if FOCCUS_LOGO.is_file():
             st.image(str(FOCCUS_LOGO), width=120)
-    with hdr_text:
-        st.markdown("**FOCCUS Demonstrator — XBeach storm-response indicators (Bulgaria)**")
-        st.caption(
-            "Cross-storm overall index per beach domain (median / 95th percentile across "
-            "every valid storm) — a different axis from the SCHISM dashboard's single "
-            "continuous mesh."
-        )
+    header_slot = hdr_text.empty()
 
     with st.container(border=True):
-        c_domain, c_scenario, c_ind, c_stat = st.columns([2, 2, 3, 2], vertical_alignment="bottom")
+        c_region, c_domain, c_scenario, c_ind, c_stat = st.columns(
+            [2, 2, 2, 3, 2], vertical_alignment="bottom"
+        )
+        with c_region:
+            region = st.selectbox(
+                "Region",
+                options=list(XBEACH_REGION_LABELS),
+                format_func=lambda r: XBEACH_REGION_LABELS[r],
+                index=list(XBEACH_REGION_LABELS).index(XBEACH_DEFAULT_REGION),
+                key="xbeach_region",
+            )
+        domain_labels = XBEACH_REGION_DOMAIN_LABELS[region]
         with c_domain:
             domain_id = st.selectbox(
                 "Domain",
-                options=sorted(XBEACH_DOMAIN_LABELS),
-                format_func=lambda d: XBEACH_DOMAIN_LABELS[d],
+                options=sorted(domain_labels),
+                format_func=lambda d: domain_labels[d],
                 index=0,
+                key=f"xbeach_domain_{region}",
             )
         with c_scenario:
             scenario_choice = st.selectbox(
@@ -130,14 +143,28 @@ def run_xbeach_dashboard(*, configure_page: bool = True) -> None:
                 index=list(XBEACH_STAT_LABELS).index(XBEACH_DEFAULT_STAT),
             )
 
-    pmtiles_uri = xbeach_indicator_s3_uri(REGION, domain_id, scenario, layer_cfg["file"])
+    with header_slot.container():
+        st.markdown(
+            f"**FOCCUS Demonstrator — XBeach storm-response indicators "
+            f"({XBEACH_REGION_LABELS[region]})**"
+        )
+        st.caption(
+            "Cross-storm overall index per beach domain (median / 95th percentile across "
+            "every valid storm) — a different axis from the SCHISM dashboard's single "
+            "continuous mesh."
+        )
+    region_note = XBEACH_REGION_NOTES.get(region)
+    if region_note:
+        st.info(region_note)
+
+    pmtiles_uri = xbeach_indicator_s3_uri(region, domain_id, scenario, layer_cfg["file"])
     value_attribute = f"{indicator_key}_{stat_key}"
 
     try:
         p_bucket, p_key = parse_s3_uri(pmtiles_uri)
         if not _pmtiles_exists(p_bucket, p_key):
             st.warning(
-                f"{XBEACH_DOMAIN_LABELS[domain_id]} isn't published to S3 yet "
+                f"{XBEACH_REGION_LABELS[region]} {domain_labels[domain_id]} isn't published to S3 yet "
                 f"({pmtiles_uri}). See xbeach_app_integration/PLAN.md step 4."
             )
             st.stop()
@@ -221,7 +248,7 @@ def run_xbeach_dashboard(*, configure_page: bool = True) -> None:
                 vmax=float(f_vmax),
             )
             folium.FitBounds([[south, west], [north, east]]).add_to(fm)
-            st_folium(fm, use_container_width=True, height=540, key="xbeach_indicator_map")
+            st_folium(fm, use_container_width=True, height=540, key=f"xbeach_indicator_map_{region}")
 
 
 if __name__ == "__main__":

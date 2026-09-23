@@ -35,6 +35,11 @@ objects on EDITO have not been re-uploaded to the new keys yet as of this
 edit, so `load_pmtiles_info_from_s3` will 404 against real S3 until the
 `edito_upload/BULGARIA/2020-2021/` bundle is uploaded to replace the old
 per-domain-folder objects.**
+
+Updated 2026-09-23: added Romania (`XBEACH/ROMANIA/2020-2021/`, same flat
+layout, uploaded and checked by HTTP HEAD: all 60 objects match the local
+files byte for byte). Domain labels are now per region
+(XBEACH_REGION_DOMAIN_LABELS); XBEACH_DOMAIN_LABELS is still Bulgaria's.
 """
 from __future__ import annotations
 
@@ -51,6 +56,7 @@ XBEACH_S3_BASE_PREFIX = "Hereon/ESC1-123-BS/XBEACH"
 # directory name which is lowercase.
 XBEACH_REGION_FOLDERS: dict[str, str] = {
     "BULGARIA": "BULGARIA",
+    "ROMANIA": "ROMANIA",
 }
 
 # Date-range period folder, still present under the region on S3 even
@@ -58,7 +64,15 @@ XBEACH_REGION_FOLDERS: dict[str, str] = {
 # batch's period -- kept only because that's where the real upload landed.
 XBEACH_REGION_PERIODS: dict[str, str] = {
     "BULGARIA": "2020-2021",
+    "ROMANIA": "2020-2021",
 }
+
+# UI label per region key, in the order the Region selector lists them.
+XBEACH_REGION_LABELS: dict[str, str] = {
+    "BULGARIA": "Bulgaria",
+    "ROMANIA": "Romania",
+}
+XBEACH_DEFAULT_REGION = "BULGARIA"
 
 
 def xbeach_s3_prefix(region: str) -> str:
@@ -72,8 +86,8 @@ XBEACH_SCENARIO_LABELS: dict[str, str] = {
 }
 XBEACH_DEFAULT_SCENARIO = "veg0"
 
-# From storm_viewer.ipynb's DOMAIN_NAMES. All 12 are valid: every domain
-# had >=10/12 valid storms feeding its cross-storm index (see
+# Bulgaria: from storm_viewer.ipynb's DOMAIN_NAMES. All 12 are valid: every
+# domain had >=10/12 valid storms feeding its cross-storm index (see
 # `bulgaria/all_storms/domain_summary.csv`) and none was dropped.
 XBEACH_DOMAIN_LABELS: dict[int, str] = {
     1: "1 — Dyavolska-Primorsko",
@@ -88,6 +102,38 @@ XBEACH_DOMAIN_LABELS: dict[int, str] = {
     10: "10 — Pomorie",
     11: "11 — Sunny Beach",
     12: "12 — Nessebar",
+}
+
+# Romania: names from NWBS-XB-2020-RO/domain_mapping.csv (grid_01..09 =
+# chilia1, chilia2, sulina, george, spit, portita, portita2, constanta,
+# eforie, north to south). Only the domains actually published on S3 are
+# listed: 1 and 9 are not run, 6 has no output yet. FIRST TEST (2026-09-23):
+# each domain's index is built from ONE storm (2020.03.23), and the runs
+# were still in progress, so median == p95 and the storm is only partly
+# covered -- see NWBS-XB-2020-RO/xbeach_app_integration/README.md. Add 6
+# (and re-upload all) once the full Romania batch is processed.
+XBEACH_ROMANIA_DOMAIN_LABELS: dict[int, str] = {
+    2: "2 — Chilia II",
+    3: "3 — Sulina",
+    4: "4 — Sfântu Gheorghe",
+    5: "5 — Sacalin Spit",
+    7: "7 — Portița II",
+    8: "8 — Constanța",
+}
+
+XBEACH_REGION_DOMAIN_LABELS: dict[str, dict[int, str]] = {
+    "BULGARIA": XBEACH_DOMAIN_LABELS,
+    "ROMANIA": XBEACH_ROMANIA_DOMAIN_LABELS,
+}
+
+# Short note shown under the header per region (None = nothing shown).
+XBEACH_REGION_NOTES: dict[str, str | None] = {
+    "BULGARIA": None,
+    "ROMANIA": (
+        "Preliminary test: Romania indices are built from a single storm (March 2020), "
+        "from runs still in progress (median = 95th percentile). Domain 8 (Constanța) "
+        "has a known local scour artefact in its bed-level change map."
+    ),
 }
 
 # indicator key -> layer config. Matches xbeach_cross_storm_indicators.py's
