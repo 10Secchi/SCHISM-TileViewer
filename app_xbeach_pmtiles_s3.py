@@ -22,6 +22,14 @@ per-region domain labels from XBEACH_REGION_DOMAIN_LABELS, and an optional
 per-region note (XBEACH_REGION_NOTES) -- Romania is a preliminary
 single-storm test for now.
 
+Updated 2026-09-23 (later): user-facing cleanup, now the "XBeach" page
+under the "GCOAST-BS" sidebar section. No development notes, S3 paths or
+internal task references are shown to the user: the Indicator selector
+lists only indicators whose PMTiles exist for the chosen domain, a
+domain with none gets a neutral "no data" message, and load failures
+show a generic message (details go to the server log only). The
+per-region note was removed.
+
 Run: streamlit run app_xbeach_pmtiles_s3.py
 """
 
@@ -54,7 +62,6 @@ from xbeach_pmtiles_common import (
     XBEACH_INDICATOR_LAYERS,
     XBEACH_REGION_DOMAIN_LABELS,
     XBEACH_REGION_LABELS,
-    XBEACH_REGION_NOTES,
     XBEACH_SCENARIO_LABELS,
     XBEACH_STAT_LABELS,
     xbeach_indicator_s3_uri,
@@ -71,7 +78,7 @@ if not FOCCUS_LOGO.is_file():
     FOCCUS_LOGO = Path(__file__).resolve().parent / "FOCCUS_Logo_clean RGB.png"
 
 
-@st.cache_data(show_spinner="Checking published runs…", ttl=3600)
+@st.cache_data(show_spinner="Loading…", ttl=3600)
 def _pmtiles_exists(bucket: str, key: str) -> bool:
     # No fixed size floor here: unlike SCHISM's single continuous mesh,
     # XBeach's small per-beach domains can legitimately produce a tiny
@@ -88,7 +95,7 @@ def _pmtiles_exists(bucket: str, key: str) -> bool:
 def run_xbeach_dashboard(*, configure_page: bool = True) -> None:
     if configure_page:
         st.set_page_config(
-            page_title="XBeach indicators (S3)",
+            page_title="GCOAST-BS — XBeach",
             layout="wide",
             initial_sidebar_state="collapsed",
         )
@@ -127,14 +134,21 @@ def run_xbeach_dashboard(*, configure_page: bool = True) -> None:
                 index=list(XBEACH_SCENARIO_LABELS.keys()).index(XBEACH_DEFAULT_SCENARIO),
             )
             scenario = next(k for k, v in XBEACH_SCENARIO_LABELS.items() if v == scenario_choice)
+        # Offer only indicators that are actually published for this domain,
+        # so the user never lands on a missing file.
+        available = [
+            k for k, cfg in XBEACH_INDICATOR_LAYERS.items()
+            if _pmtiles_exists(*parse_s3_uri(xbeach_indicator_s3_uri(region, domain_id, scenario, cfg["file"])))
+        ]
         with c_ind:
             indicator_key = st.selectbox(
                 "Indicator",
-                options=list(XBEACH_INDICATOR_LAYERS),
+                options=available,
                 format_func=lambda k: XBEACH_INDICATOR_LABELS[k],
                 index=0,
+                disabled=not available,
+                placeholder="No indicators available",
             )
-        layer_cfg = XBEACH_INDICATOR_LAYERS[indicator_key]
         with c_stat:
             stat_key = st.selectbox(
                 "Statistic",
@@ -145,29 +159,24 @@ def run_xbeach_dashboard(*, configure_page: bool = True) -> None:
 
     with header_slot.container():
         st.markdown(
-            f"**FOCCUS Demonstrator — XBeach storm-response indicators "
+            f"**FOCCUS Demonstrator — GCOAST-BS XBeach: beach storm-response indicators "
             f"({XBEACH_REGION_LABELS[region]})**"
         )
         st.caption(
-            "Cross-storm overall index per beach domain (median / 95th percentile across "
-            "every valid storm) — a different axis from the SCHISM dashboard's single "
-            "continuous mesh."
+            "High-resolution beach-scale indicators per coastal domain: median and 95th "
+            "percentile over the simulated storm events."
         )
-    region_note = XBEACH_REGION_NOTES.get(region)
-    if region_note:
-        st.info(region_note)
+
+    if indicator_key is None:
+        st.info("No data is available for the selected domain.")
+        return
+    layer_cfg = XBEACH_INDICATOR_LAYERS[indicator_key]
 
     pmtiles_uri = xbeach_indicator_s3_uri(region, domain_id, scenario, layer_cfg["file"])
     value_attribute = f"{indicator_key}_{stat_key}"
 
     try:
         p_bucket, p_key = parse_s3_uri(pmtiles_uri)
-        if not _pmtiles_exists(p_bucket, p_key):
-            st.warning(
-                f"{XBEACH_REGION_LABELS[region]} {domain_labels[domain_id]} isn't published to S3 yet "
-                f"({pmtiles_uri}). See xbeach_app_integration/PLAN.md step 4."
-            )
-            st.stop()
         info = load_pmtiles_info_from_s3(
             p_bucket,
             p_key,
@@ -175,8 +184,9 @@ def run_xbeach_dashboard(*, configure_page: bool = True) -> None:
         )
         pmtiles_url = public_s3_url(p_bucket, p_key)
     except Exception as exc:
-        st.error(f"Failed to load data from S3: {exc}")
-        st.stop()
+        print(f"[xbeach] failed to load {pmtiles_uri}: {exc!r}")  # server log only
+        st.info("The map for this selection could not be loaded. Please try again later.")
+        return
 
     south, west, north, east = info["bounds"]
     center_lat = (south + north) / 2.0
@@ -206,7 +216,7 @@ def run_xbeach_dashboard(*, configure_page: bool = True) -> None:
                 key=f"xbeach_cmap_{value_attribute}",
             )
             f_opacity = st.slider(
-                "Mesh overlay opacity", 0.1, 1.0, 0.85, 0.05, key="xbeach_mesh_opacity"
+                "Overlay opacity", 0.1, 1.0, 0.85, 0.05, key="xbeach_mesh_opacity"
             )
             f_vmin, f_vmax = st.slider(
                 "Color scale range",

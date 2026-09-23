@@ -219,7 +219,7 @@ DEMO_TAGLINE = (
 def run_dashboard(*, configure_page: bool = True) -> None:
     if configure_page:
         st.set_page_config(
-            page_title="SCHISM indicators + assessment (S3)",
+            page_title="GCOAST-BS — SCHISM",
             layout="wide",
             initial_sidebar_state="collapsed",
         )
@@ -328,7 +328,7 @@ def run_dashboard(*, configure_page: bool = True) -> None:
     try:
         p_bucket, p_key = parse_s3_uri(pmtiles_uri)
         if s3_object_size(p_bucket, p_key) < 64 * 1024:
-            st.warning(f"PMTiles file looks empty ({pmtiles_uri}). Map may not render.")
+            print(f"[schism] PMTiles file looks empty: {pmtiles_uri}")  # server log only
         info = load_pmtiles_info_from_s3(
             p_bucket,
             p_key,
@@ -353,7 +353,8 @@ def run_dashboard(*, configure_page: bool = True) -> None:
         idx_bucket, idx_key = parse_s3_uri(index_uri)
         _mesh_index_bbox_for_assessment(n_bucket, n_key, idx_bucket, idx_key)  # warm spatial index
     except Exception as exc:
-        st.error(f"Failed to load data from S3: {exc}")
+        print(f"[schism] failed to load {pmtiles_uri} / {nc_uri}: {exc!r}")  # server log only
+        st.info("The data for this selection could not be loaded. Please try again later.")
         st.stop()
 
     south, west, north, east = effective_map_bounds(info["bounds"], layer_cfg)
@@ -385,11 +386,9 @@ def run_dashboard(*, configure_page: bool = True) -> None:
     if default_lo >= default_hi:
         default_lo, default_hi = slider_min, slider_max
 
-    tile_options = {
-        "OpenStreetMap": "OpenStreetMap",
-        "CartoDB positron": "CartoDB positron",
-        "CartoDB dark_matter": "CartoDB dark_matter",
-    }
+    # OpenStreetMap only: the CartoDB basemaps started requiring an API key
+    # (same reason as the XBeach page).
+    BASEMAP = "OpenStreetMap"
 
     data_max_zoom = int(info["max_zoom"])
     data_min_zoom = int(info["min_zoom"])
@@ -443,7 +442,7 @@ def run_dashboard(*, configure_page: bool = True) -> None:
     def indicator_map_panel():
         """Map + style controls in an isolated fragment.
 
-        Changing colormap / range / opacity / basemap reruns only this fragment,
+        Changing colormap / range / opacity reruns only this fragment,
         leaving the statistics, distribution and threshold panels untouched.
         Drawing a new polygon updates the shared selection and triggers a full rerun.
         """
@@ -463,12 +462,6 @@ def run_dashboard(*, configure_page: bool = True) -> None:
                     index=default_cmap_index(default_cmap),
                     key=cmap_key,
                 )
-                f_basemap = st.selectbox(
-                    "Basemap",
-                    options=["OpenStreetMap", "CartoDB positron", "CartoDB dark_matter"],
-                    index=1,
-                    key="basemap_choice",
-                )
                 f_opacity = st.slider(
                     "Mesh overlay opacity", 0.1, 1.0, 0.85, 0.05, key="mesh_opacity"
                 )
@@ -486,7 +479,7 @@ def run_dashboard(*, configure_page: bool = True) -> None:
                 location=[center_lat, center_lon],
                 zoom_start=zoom_start,
                 max_zoom=data_max_zoom + 1,
-                tiles=tile_options[f_basemap],
+                tiles=BASEMAP,
                 control_scale=True,
             )
             fstyle = build_maplibre_style(
@@ -580,7 +573,8 @@ def run_dashboard(*, configure_page: bool = True) -> None:
             real_stats = assessment.get("stats")
         except Exception as exc:
             with stats_col:
-                st.error(f"Failed to compute polygon stats: {exc}")
+                print(f"[schism] polygon stats failed: {exc!r}")  # server log only
+                st.info("Statistics could not be computed for this area. Try drawing a different polygon.")
 
     has_data = bool(real_stats) and real_stats.get("count", 0) > 0
     stats = real_stats if has_data else _empty_stats()
@@ -699,7 +693,7 @@ def run_dashboard(*, configure_page: bool = True) -> None:
                     tsouth, twest, tnorth, teast = thr_bounds
                     tcenter = [(tsouth + tnorth) / 2, (twest + teast) / 2]
                     tm = folium.Map(
-                        location=tcenter, zoom_start=8, tiles="CartoDB positron", control_scale=True
+                        location=tcenter, zoom_start=8, tiles=BASEMAP, control_scale=True
                     )
                     folium.raster_layers.ImageOverlay(
                         image=thr_rgba,
@@ -726,7 +720,8 @@ def run_dashboard(*, configure_page: bool = True) -> None:
                     folium.FitBounds([[tsouth, twest], [tnorth, teast]]).add_to(tm)
                     st_folium(tm, use_container_width=True, height=THR_HEIGHT, key="threshold_map")
                 except Exception as exc:
-                    st.error(f"Failed to render threshold map: {exc}")
+                    print(f"[schism] threshold map failed: {exc!r}")  # server log only
+                    st.info("The threshold map could not be displayed for this area.")
 
     # --- Panel 4: value distribution / bar plot (bottom-right) -----------------
     with stats_col:

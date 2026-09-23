@@ -126,16 +126,6 @@ XBEACH_REGION_DOMAIN_LABELS: dict[str, dict[int, str]] = {
     "ROMANIA": XBEACH_ROMANIA_DOMAIN_LABELS,
 }
 
-# Short note shown under the header per region (None = nothing shown).
-XBEACH_REGION_NOTES: dict[str, str | None] = {
-    "BULGARIA": None,
-    "ROMANIA": (
-        "Preliminary test: Romania indices are built from a single storm (March 2020), "
-        "from runs still in progress (median = 95th percentile). Domain 8 (Constanța) "
-        "has a known local scour artefact in its bed-level change map."
-    ),
-}
-
 # indicator key -> layer config. Matches xbeach_cross_storm_indicators.py's
 # INDICATOR_KEYS/INDICATOR_SPECS. Each file holds BOTH statistics as two
 # properties/variables (`<key>_median`, `<key>_p95`) rather than one file

@@ -1,10 +1,13 @@
-"""FOCCUS demonstrator — two-page Streamlit app (About + Dashboard).
+"""FOCCUS demonstrator — Streamlit app (About + GCOAST-BS: SCHISM, XBeach).
 
 Run:
   streamlit run app_pmtiles_assessment_two_paged_s3.py
 
-Page 1 (About): ESC1GB.md documentation with embedded PDF (DF122.pdf).
-Page 2 (Dashboard): interactive indicator map and polygon area assessment.
+Sidebar:
+  About          -- ESC1GB.md documentation with embedded PDF (DF122.pdf).
+  GCOAST-BS
+    SCHISM       -- regional indicator map and polygon area assessment.
+    XBeach       -- beach-scale storm-response indicators per domain.
 """
 
 from __future__ import annotations
@@ -20,8 +23,11 @@ st.set_page_config(
 )
 
 about = st.Page(render_about_page, title="About", icon="📖", default=True)
-dashboard = st.Page("foccus_dashboard_page.py", title="Dashboard", icon="🗺️")
-xbeach_dashboard = st.Page("xbeach_dashboard_page.py", title="XBeach (beta)", icon="🏖️")
+schism_dashboard = st.Page("foccus_dashboard_page.py", title="SCHISM", icon="🗺️")
+xbeach_dashboard = st.Page("xbeach_dashboard_page.py", title="XBeach", icon="🏖️")
 
-pg = st.navigation([about, dashboard, xbeach_dashboard])
+pg = st.navigation({
+    "": [about],
+    "GCOAST-BS": [schism_dashboard, xbeach_dashboard],
+})
 pg.run()
