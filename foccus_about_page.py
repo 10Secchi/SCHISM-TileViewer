@@ -21,8 +21,8 @@
               █║  ╚════════════════════╝ █║
               ███████████╗      ██████████║
                ╚═════════╝       ╚════════╝
+FOCCUS demonstrator — About page (ESC1GB documentation + embedded assets)
 """
-"""FOCCUS demonstrator — About page (ESC1GB documentation + embedded assets)."""
 
 from __future__ import annotations
 
