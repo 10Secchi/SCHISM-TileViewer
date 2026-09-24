@@ -92,6 +92,7 @@ The GCOAST-BS system has undergone FOCCUS-specific improvements related to diffe
 
 The assessment methodology in this demonstrator is a combination of previously published work by [(Gramcianinov et al. 2026)](https://doi.org/10.1016/j.ocemod.2026.102749) and detailed beach-scale erosion studies at Norderney [(Silva et al. 2026)](https://doi.org/10.1016/j.jenvman.2026.128756).
 
+```
     ███████╗░█████╗░░█████╗░░█████╗░██╗░░░██╗░██████╗
     ██╔════╝██╔══██╗██╔══██╗██╔══██╗██║░░░██║██╔════╝
     █████╗░░██║░░██║██║░░╚═╝██║░░╚═╝██║░░░██║╚█████╗░
@@ -114,3 +115,4 @@ The assessment methodology in this demonstrator is a combination of previously p
               █║  ╚════════════════════╝ █║
               ███████████╗      ██████████║
                ╚═════════╝       ╚════════╝
+```
