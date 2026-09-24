@@ -21,8 +21,9 @@
               █║  ╚════════════════════╝ █║
               ███████████╗      ██████████║
                ╚═════════╝       ╚════════╝
+
+FOCCUS demonstrator — interactive dashboard page (wrapper)
 """
-"""FOCCUS demonstrator — interactive dashboard page (wrapper)."""
 
 from app_pmtiles_assessment_s3 import run_dashboard
 
